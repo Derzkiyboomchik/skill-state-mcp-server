@@ -40,7 +40,7 @@ import {
   SkillStateTurnPromptArgsSchema,
 } from "./schemas.js";
 
-export const SERVER_INFO = { name: "skill-state-runtime", version: "1.0.0" } as const;
+export const SERVER_INFO = { name: "skill-state-runtime", version: "1.0.1" } as const;
 
 const SERVER_INSTRUCTIONS = [
   "You are connected to a SKILL.state runtime (arXiv:2608.26263).",
