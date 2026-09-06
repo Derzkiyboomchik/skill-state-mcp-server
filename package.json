@@ -1,0 +1,58 @@
+{
+  "name": "@bub0lehich/skill-state-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP runtime for the SKILL.state architecture (arXiv:2608.26263) — replaces append-only conversational history with an explicit, mutable execution state (P, Σ, O).",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Derzkiyboomchik/skill-state-mcp-server.git"
+  },
+  "homepage": "https://github.com/Derzkiyboomchik/skill-state-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/Derzkiyboomchik/skill-state-mcp-server/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "skill-state",
+    "agent",
+    "ai-agents",
+    "llm",
+    "context-optimization",
+    "state-machine"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "skill-state-mcp-server": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "assets"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build",
+    "dev": "tsx watch index.ts --http --port 3211",
+    "start": "node dist/index.js",
+    "start:dev": "tsx index.ts",
+    "start:http": "node dist/index.js --http --port 3211",
+    "start:bun": "bun index.ts",
+    "demo": "tsx demo/demo-client.ts",
+    "demo:bun": "bun demo/demo-client.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "bun-types": "^1.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}
