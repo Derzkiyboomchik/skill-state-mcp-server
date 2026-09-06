@@ -30,6 +30,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { buildMcpServer, SERVER_INFO } from "./src/server.js";
 import { globalSessionStore } from "./src/state.js";
 import { getAsciiBanner } from "./src/banner.js";
+import { runInteractiveSetup } from "./src/installer.js";
 
 /* ────────────────────────────── CLI args ───────────────────────────────── */
 
@@ -40,7 +41,9 @@ function printHelp(): void {
     [
       getAsciiBanner(),
       "Usage:",
-      "  npx @bub0lehich/skill-state-mcp-server           Run over stdio (default MCP transport)",
+      "  npx @bub0lehich/skill-state-mcp-server           Interactive setup wizard (in terminal) or stdio MCP",
+      "  npx @bub0lehich/skill-state-mcp-server setup     Run interactive setup wizard",
+      "  npx @bub0lehich/skill-state-mcp-server --stdio   Force stdio MCP transport",
       "  npx @bub0lehich/skill-state-mcp-server --http    Run Streamable HTTP on /mcp (:3211)",
       "  npx @bub0lehich/skill-state-mcp-server --help    Show this help",
       "",
@@ -60,6 +63,12 @@ function printHelp(): void {
 
 const wantsHelp = argv.includes("--help") || argv.includes("-h") || argv.includes("--info");
 const wantsHttp = argv.includes("--http");
+const wantsStdio = argv.includes("--stdio");
+const wantsSetup =
+  argv.includes("setup") ||
+  argv.includes("install") ||
+  argv.includes("--setup") ||
+  argv.includes("--install");
 const portFlag = argv.indexOf("--port");
 const httpPort =
   (portFlag !== -1 ? Number(argv[portFlag + 1]) : NaN) ||
@@ -231,6 +240,14 @@ async function runHttp(port: number): Promise<void> {
 
 if (wantsHttp) {
   await runHttp(httpPort);
+} else if (wantsSetup || (process.stdin.isTTY && !wantsStdio && argv.length === 0)) {
+  const setup = await runInteractiveSetup();
+  if (setup.action === "run_http") {
+    await runHttp(setup.httpPort ?? 3211);
+  } else if (setup.action === "run_stdio") {
+    await runStdio();
+  }
 } else {
   await runStdio();
 }
+

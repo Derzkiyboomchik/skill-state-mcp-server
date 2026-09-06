@@ -1,6 +1,6 @@
 {
   "name": "@bub0lehich/skill-state-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP runtime for the SKILL.state architecture (arXiv:2608.26263) — replaces append-only conversational history with an explicit, mutable execution state (P, Σ, O).",
   "repository": {
     "type": "git",
@@ -46,6 +46,7 @@
     "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
+    "@clack/prompts": "^1.7.0",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "zod": "^3.25.0"
   },
