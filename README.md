@@ -25,16 +25,16 @@
 
 ## Overview
 
-Traditional LLM agent workflows rely on **append-only conversation history** `[m_1, r_1, o_1, m_2, r_2, ...]`. Over long horizons, this design exhibits three failure modes:
-1. **Context Bloat:** Token consumption grows as $\mathcal{O}(T)$, exhausting context limits and increasing per-turn latency.
-2. **Reasoning Poisoning:** Stale thoughts ($R_t$) and abandoned hypotheses persist in context, biassing future turns.
-3. **State Hallucination:** Agents lose track of variables and counters buried in natural language scratchpads.
+Traditional LLM agent workflows rely on **append-only conversation history** `[m_1, r_1, o_1, m_2, r_2, ...]`. Over long horizons, this design exhibits three fundamental failure modes:
+1. **Context Bloat:** Token consumption scales monotonically as $\mathcal{O}(T)$, exhausting context windows and elevating per-turn latency.
+2. **Reasoning Poisoning:** Stale thoughts ($R_t$) and abandoned hypotheses persist in context, biassing subsequent turns.
+3. **State Hallucination:** Agents lose track of variables, counters, and completed subtasks buried across thousands of tokens of prose.
 
-**SKILL.state** ([arXiv:2608.26263](https://arxiv.org/html/2608.26263)) replaces conversation history with a formal state tuple **$(P, \Sigma_t, O_t)$**:
-- **$P$:** Immutable skill specification (frozen instructions).
+**SKILL.state** ([arXiv:2608.26263](https://arxiv.org/html/2608.26263)) replaces conversational history with an explicit, formal state tuple **$(P, \Sigma_t, O_t)$**:
+- **$P$:** Immutable skill specification (frozen task instructions).
 - **$\Sigma_t$:** Explicit, typed execution state (JSON object).
 - **$O_t$:** Latest environment observation.
-- **$R_t$:** Chain-of-thought reasoning, **discarded at the tool boundary** each turn to prevent reasoning loops.
+- **$R_t$:** Chain-of-thought reasoning, **discarded at the tool boundary** each turn to prevent reasoning loops and context leakage.
 
 ```
 Conventional Agent (Append-Only History)
@@ -49,26 +49,15 @@ Turn t+1 input:    (P, Σ_{t+1}, O_{t+1})   [Context size remains O(1) bounded]
 
 ---
 
-## Quickstart
+## Installation & Setup
 
-### Claude Desktop
+In accordance with standard Model Context Protocol deployment patterns, the server can be run dynamically via **`npx`** (recommended for all MCP clients) or installed globally via **`npm`**.
 
-Add to your `claude_desktop_config.json`:
+### 1. Claude Desktop
 
-```json
-{
-  "mcpServers": {
-    "skill-state": {
-      "command": "npx",
-      "args": ["-y", "@bub0lehich/skill-state-mcp-server"]
-    }
-  }
-}
-```
-
-### Cursor & Cline
-
-Add to `.cursor/mcp.json` or Cline MCP settings:
+Add the server to your `claude_desktop_config.json`:
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -81,15 +70,99 @@ Add to `.cursor/mcp.json` or Cline MCP settings:
 }
 ```
 
-### CLI
+### 2. Claude Code (CLI)
+
+Register the server using Anthropic's Claude Code CLI:
 
 ```bash
-# Run over stdio (default MCP transport)
-npx -y @bub0lehich/skill-state-mcp-server
+claude mcp add skill-state -- npx -y @bub0lehich/skill-state-mcp-server
+```
 
-# Run Streamable HTTP transport on port 3211
+### 3. Cursor
+
+Add to `.cursor/mcp.json` in your project root or open **Settings -> Features -> MCP -> Add New MCP Server**:
+
+```json
+{
+  "mcpServers": {
+    "skill-state": {
+      "command": "npx",
+      "args": ["-y", "@bub0lehich/skill-state-mcp-server"]
+    }
+  }
+}
+```
+
+### 4. VS Code (Cline / Roo Code / Continue)
+
+Add to `cline_mcp_settings.json` or your MCP extension configuration:
+
+```json
+{
+  "mcpServers": {
+    "skill-state": {
+      "command": "npx",
+      "args": ["-y", "@bub0lehich/skill-state-mcp-server"]
+    }
+  }
+}
+```
+
+### 5. Persistent Global Installation
+
+If you prefer installing the binary once onto your system rather than downloading via `npx`:
+
+```bash
+npm install -g @bub0lehich/skill-state-mcp-server
+```
+
+Once installed, reference the binary directly:
+
+```json
+{
+  "mcpServers": {
+    "skill-state": {
+      "command": "skill-state-mcp-server"
+    }
+  }
+}
+```
+
+### 6. Programmatic Usage (Node.js SDK)
+
+Install as a dependency in your application:
+
+```bash
+npm install @bub0lehich/skill-state-mcp-server
+```
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerSkillStateTools } from "@bub0lehich/skill-state-mcp-server";
+```
+
+---
+
+## Transports & CLI Usage
+
+### stdio Transport (Default)
+
+Used by Claude Desktop, Cursor, and IDEs via stdin/stdout:
+
+```bash
+npx -y @bub0lehich/skill-state-mcp-server
+```
+
+### Streamable HTTP Transport (SSE)
+
+For microservice architectures and remote agents:
+
+```bash
 npx -y @bub0lehich/skill-state-mcp-server --http --port 3211
 ```
+
+- **MCP Endpoint:** `POST http://localhost:3211/mcp`
+- **Liveness Probe:** `GET http://localhost:3211/health`
 
 ---
 
@@ -99,14 +172,14 @@ At each step $t$, the agent emits a sparse state patch $\Delta\Sigma_t$. The run
 
 $$\Sigma_{t+1} = \Sigma_t \oplus \Delta\Sigma_t$$
 
-Null acts as an explicit **first-class deletion instruction**, distinguishing field clearing from field omission:
+Null serves as an explicit **first-class deletion instruction**, distinguishing field removal from field omission:
 
 | Patch Value in $\Delta\Sigma_t$ | Semantics on Target State $\Sigma$ |
 |---|---|
 | `"key": null` | **Deletes** the key from $\Sigma$ |
 | `"key": value` | Inserts or overwrites scalar value |
 | `"key": { ... }` | Recursively merges nested objects (`null` deletes nested keys) |
-| `"key": [ ... ]` | Replaces array wholesale (deterministic, avoids positional bugs) |
+| `"key": [ ... ]` | Replaces array wholesale (deterministic, avoids positional diffing) |
 | *(omitted)* | **Preserved** (sparse delta) |
 
 ### Example
