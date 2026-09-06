@@ -25,7 +25,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "skill-state-mcp-server": "./dist/index.js"
+    "skill-state-mcp-server": "dist/index.js"
   },
   "files": [
     "dist",
